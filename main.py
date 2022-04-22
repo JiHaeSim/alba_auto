@@ -4,6 +4,12 @@ import time
 from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import UnexpectedAlertPresentException
 
+# (이력서 열람 오류를 위해 추가한 부분)
+'''
+options = webdriver.ChromeOptions()
+options.add_experimental_option("excludeSwitches", ["enable-logging"])
+browser = webdriver.Chrome(options=options)
+'''
 
 browser = webdriver.Chrome('chromedriver.exe')
 browser.get("https://www.albamon.com/login/logout_trans.asp")
@@ -56,16 +62,36 @@ print(hrefList)
 
 # 열람 전 조건 체크(아직 미완)
 for href in hrefList:
-    browser.get(href)
-    if browser.current_url=="https://www.albamon.com/ResumeSearch":
-        continue
-    point = browser.find_element_by_class_name('point')
-    print(point)
+    script = f"window.open('{href}')"
+    browser.execute_script(script)
+    
+    try:
+        if browser.current_url=="https://www.albamon.com/ResumeSearch":
+            browser.quit()
+            continue
+    except UnexpectedAlertPresentException as e:
+        print(e.__dict__['msg'])
+    
+    time.sleep(3)
+    # iframe 이동하는 부분
+    # iframe = browser.find_element_by_id('albamontargetURL') 
+    # browser.switch_to.frame(iframe)
+    
+    # openBtn = browser.find_element_by_class_name('srvBtn devBtnGoSearching')
+    # openBtn.click()
+    # point = browser.find_element_by_xpath('//*[@id="layer_ggViewWrap"]/section/article[2]/div[1]/p/em')
+    # print(point.get_attribute('innerText'))
+    
+    point = browser.find_element_by_class_name('name')
+    # point = browser.find_element_by_class_name('field-head').find_element_by_tag_name('em').get_attribute('innerText')
+    print(point.get_attribute('innerText'))
+    
     if '재학' in point.get_attribute('innerText'):
         if '휴학' in point.get_attribute('innerText'):
             print("우리와 함께 하실 수 없습니다.")
     else:
         print("반가워...!!")
+    browser.quit()
         
 time.sleep(1000)
 
