@@ -10,6 +10,10 @@ import pandas as pd
 from openpyxl import load_workbook
 import os
 import shutil
+from selenium.webdriver.common.alert import Alert
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoAlertPresentException
 
 # (이력서 열람 오류를 위해 추가한 부분)
 '''
@@ -17,9 +21,11 @@ options = webdriver.ChromeOptions()
 options.add_experimental_option("excludeSwitches", ["enable-logging"])
 browser = webdriver.Chrome(options=options)
 '''
-
-id = input("아이디: ")
-pw = input("비밀번호: ")
+f = open('./login.txt','r')
+login_data = f.read()
+id = login_data.split()[0]
+pw = login_data.split()[1]
+f.close
 
 browser = webdriver.Chrome('chromedriver.exe')
 browser.get("https://www.albamon.com/login/logout_trans.asp")
@@ -40,6 +46,10 @@ browser.find_element_by_class_name('nav4').click()
 # browser.find_element_by_class_name('n2').click()
 # browser.switch_to.window(browser.window_handles[1])
 
+f = open('./howmany.txt','r')
+howmany_data = f.read()
+howmany_data_number = howmany_data.split()[0]
+f.close
 # 인재정보 50개씩 보기
 '''
 browser.find_element_by_class_name('selPerPage').click()
@@ -71,26 +81,36 @@ print(hrefList)
 # 열람 전 조건 체크(아직 미완)
 index = 1
 employee = []
-# for href in hrefList:
-while index < 10:
+for href in hrefList:
+# while index < 10:
     time.sleep(random.randrange(5))
-    # script = f"window.open('{href}')"
-    script = f"window.open('{hrefList[index]}')"
+    script = f"window.open('{href}')"
+    # script = f"window.open('{hrefList[index]}')"
     browser.execute_script(script)
     browser.switch_to.window(browser.window_handles[index]) # 현재 페이지로 활성화 해줘야했음 ㅠㅠ
     
-    # 이력서 삭제된 경우 수정해야함 (팝업 확인 안됨)
-    try:
-        if browser.current_url=="https://www.albamon.com/ResumeSearch":
-            browser.quit()
-            continue
-    except UnexpectedAlertPresentException as e:
-        print(e.__dict__['msg'])
-    
     time.sleep(3)
     
-    point = browser.find_element_by_class_name('point') # 최종학력
+    try:
+        alert = Alert(browser)
+        alert.accept()
+        index+=1
+        continue
+    except UnexpectedAlertPresentException as e:
+        print(e.__dict__['msg'])
+        index+=1
+        continue
+    
+    except NoAlertPresentException as e:
+        print(e.__dict__['msg'])
 
+    try:
+        point = browser.find_element_by_class_name('point') # 최종학력
+    except NoSuchElementException as e:
+        print(e.__dict__['msg'])
+        index+=1
+        continue
+    
     print(browser.find_element_by_class_name('name').get_attribute('innerText'))
     print(point.get_attribute('innerText'))
     if '재학' in point.get_attribute('innerText'):
@@ -125,8 +145,8 @@ while index < 10:
         cancleBtn = browser.find_element_by_xpath('//*[@id="dev_resume_open_layer"]/div[3]/p/button[2]')
         okBtn = browser.find_element_by_class_name('lyBottom').find_element_by_css_selector('#dev_resume_open_layer > div.lyBottom > p > button.on.confirmBtn.dev_btn_2')
         # okBtn = browser.find_element_by_class_name('on confirmBtn dev_btn_2')
-        # cancleBtn.click()
-        okBtn.click()
+        cancleBtn.click()
+        # okBtn.click()
         name = browser.find_element_by_class_name('name').get_attribute('innerText')
         gender = browser.find_element_by_class_name('gender').get_attribute('innerText')
         age = browser.find_element_by_class_name('age').get_attribute('innerText')
@@ -142,7 +162,7 @@ print("for문 빠져나왔음")
 print(employee)
 employeeExcel = pd.DataFrame(employee)
 dir_path = './excel'
-dir = './excel'+time.strftime('%Y-%m-%d', time.localtime(time.time()))+'.xlsx'
+dir = './excel/'+time.strftime('%Y-%m-%d', time.localtime(time.time()))+'.xlsx'
 if os.path.exists(dir_path):
     shutil.rmtree(dir_path)
 os.makedirs(dir_path)
@@ -150,5 +170,4 @@ os.makedirs(dir_path)
 with pd.ExcelWriter(dir) as writer:
     employeeExcel.to_excel(writer, sheet_name=time.strftime('%Y-%m-%d', time.localtime(time.time())))
         
-time.sleep(1000)
-
+browser.quit()
