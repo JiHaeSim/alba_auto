@@ -1,3 +1,4 @@
+from audioop import add
 from lib2to3.pgen2 import driver
 from selenium import webdriver
 import time
@@ -5,6 +6,10 @@ from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import UnexpectedAlertPresentException
 from selenium.common.exceptions import NoSuchElementException
 import random
+import pandas as pd
+from openpyxl import load_workbook
+import os
+import shutil
 
 # (이력서 열람 오류를 위해 추가한 부분)
 '''
@@ -13,12 +18,12 @@ options.add_experimental_option("excludeSwitches", ["enable-logging"])
 browser = webdriver.Chrome(options=options)
 '''
 
+id = input("아이디: ")
+pw = input("비밀번호: ")
+
 browser = webdriver.Chrome('chromedriver.exe')
 browser.get("https://www.albamon.com/login/logout_trans.asp")
 # browser.set_window_size(1920,1280)
-
-id = 'tjcldgkwk2'
-pw = 'xmrxla1!'
 
 # 로그인
 browser.find_element_by_id('DB_Name_GI').click()
@@ -36,9 +41,11 @@ browser.find_element_by_class_name('nav4').click()
 # browser.switch_to.window(browser.window_handles[1])
 
 # 인재정보 50개씩 보기
+'''
 browser.find_element_by_class_name('selPerPage').click()
 select = Select(browser.find_element_by_class_name('selPerPage'))
 select.select_by_value('50')
+'''
 
 # 맞춤 인재정보 스크랩
 tbody = browser.find_element_by_tag_name('tbody')
@@ -63,12 +70,16 @@ print(hrefList)
 
 # 열람 전 조건 체크(아직 미완)
 index = 1
-for href in hrefList:
+employee = []
+# for href in hrefList:
+while index < 10:
     time.sleep(random.randrange(5))
-    script = f"window.open('{href}')"
+    # script = f"window.open('{href}')"
+    script = f"window.open('{hrefList[index]}')"
     browser.execute_script(script)
     browser.switch_to.window(browser.window_handles[index]) # 현재 페이지로 활성화 해줘야했음 ㅠㅠ
     
+    # 이력서 삭제된 경우 수정해야함 (팝업 확인 안됨)
     try:
         if browser.current_url=="https://www.albamon.com/ResumeSearch":
             browser.quit()
@@ -78,7 +89,7 @@ for href in hrefList:
     
     time.sleep(3)
     
-    point = browser.find_element_by_class_name('point')
+    point = browser.find_element_by_class_name('point') # 최종학력
 
     print(browser.find_element_by_class_name('name').get_attribute('innerText'))
     print(point.get_attribute('innerText'))
@@ -88,21 +99,21 @@ for href in hrefList:
         print("우리와 함께 하실 수 없습니다.")
     else:
         try:
-            suggestBtn = browser.find_element_by_class_name('devBtnSuggestAlba')
+            suggestBtn = browser.find_element_by_class_name('devBtnSuggestAlba') # 알바제의
             if suggestBtn:
                 print('알바제의 따위는 하지 않는다.')
                 index+=1
                 continue
         except NoSuchElementException as e:
             print(e.__dict__['msg'])
-        if "O" not in browser.find_element_by_class_name('name').get_attribute('innerText'):
+        if "O" not in browser.find_element_by_class_name('name').get_attribute('innerText'): # 열람된 이력서
             print("이미 열람된 이력서입니다.")
             index+=1
             continue
         print("반가워...!!")
         time.sleep(2)
         openBtn = browser.find_element_by_class_name('rsBtNewBnr').find_element_by_tag_name('button')
-        openBtn.click()
+        openBtn.click() # 이력서 열람
         time.sleep(3)
         try:
             if browser.find_element_by_id('dev_show_open_msg'): # 알바생 메세지 있는 경우
@@ -112,15 +123,32 @@ for href in hrefList:
         except NoSuchElementException as e:
             print(e.__dict__['msg'])
         cancleBtn = browser.find_element_by_xpath('//*[@id="dev_resume_open_layer"]/div[3]/p/button[2]')
-        cancleBtn.click()
-        # okBtn = browser.find_element_by_class_name('lyBottom').find_element_by_css_selector('#dev_resume_open_layer > div.lyBottom > p > button.on.confirmBtn.dev_btn_2')
-    # browser.close()
-    
-    # quit 맞는지 확인해야함
+        okBtn = browser.find_element_by_class_name('lyBottom').find_element_by_css_selector('#dev_resume_open_layer > div.lyBottom > p > button.on.confirmBtn.dev_btn_2')
+        # okBtn = browser.find_element_by_class_name('on confirmBtn dev_btn_2')
+        # cancleBtn.click()
+        okBtn.click()
+        name = browser.find_element_by_class_name('name').get_attribute('innerText')
+        gender = browser.find_element_by_class_name('gender').get_attribute('innerText')
+        age = browser.find_element_by_class_name('age').get_attribute('innerText')
+        address = browser.find_element_by_xpath('//*[@id="layer_ggViewWrap"]/section/article[1]/div[2]/div[2]/ul/li[1]/span[2]').get_attribute('innerText')
+        phone = browser.find_element_by_xpath('//*[@id="layer_ggViewWrap"]/section/article[1]/div[2]/div[2]/ul/li[2]/span[2]').get_attribute('innerText').split()[0]
+        email = browser.find_element_by_xpath('//*[@id="layer_ggViewWrap"]/section/article[1]/div[2]/div[2]/ul/li[3]/span[2]').get_attribute('innerText').split()[0]
+        person = [name, gender, age, address, phone, email]
+        print(person)
+        employee.append(person)
     index+=1
 
 print("for문 빠져나왔음")
-# 1번째 창 빼고 다 닫기
-# browser.quit()
+print(employee)
+employeeExcel = pd.DataFrame(employee)
+dir_path = './excel'
+dir = './excel'+time.strftime('%Y-%m-%d', time.localtime(time.time()))+'.xlsx'
+if os.path.exists(dir_path):
+    shutil.rmtree(dir_path)
+os.makedirs(dir_path)
+
+with pd.ExcelWriter(dir) as writer:
+    employeeExcel.to_excel(writer, sheet_name=time.strftime('%Y-%m-%d', time.localtime(time.time())))
+        
 time.sleep(1000)
 
