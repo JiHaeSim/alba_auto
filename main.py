@@ -48,14 +48,20 @@ browser.find_element_by_class_name('nav4').click()
 
 f = open('./howmany.txt','r')
 howmany_data = f.read()
-howmany_data_number = howmany_data.split()[0]
+howmany_data_number = int(howmany_data.split()[0])
 f.close
-# 인재정보 50개씩 보기
-'''
-browser.find_element_by_class_name('selPerPage').click()
-select = Select(browser.find_element_by_class_name('selPerPage'))
-select.select_by_value('50')
-'''
+# 인재정보 20~50개씩 보기
+if howmany_data_number>20:
+    browser.find_element_by_class_name('selPerPage').click()
+    select = Select(browser.find_element_by_class_name('selPerPage'))
+    if howmany_data_number==30:
+        select.select_by_value('30')
+        pass
+    elif howmany_data_number==40:
+        select.select_by_value('40')
+    elif howmany_data_number==50:
+        select.select_by_value('50')
+        pass
 
 # 맞춤 인재정보 스크랩
 tbody = browser.find_element_by_tag_name('tbody')
@@ -131,10 +137,7 @@ for href in hrefList:
             index+=1
             continue
         print("반가워...!!")
-        time.sleep(2)
-        openBtn = browser.find_element_by_class_name('rsBtNewBnr').find_element_by_tag_name('button')
-        openBtn.click() # 이력서 열람
-        time.sleep(3)
+        
         try:
             if browser.find_element_by_id('dev_show_open_msg'): # 알바생 메세지 있는 경우
                 print('알바생 메세지가 있습니다.')
@@ -142,11 +145,15 @@ for href in hrefList:
                 continue
         except NoSuchElementException as e:
             print(e.__dict__['msg'])
+            
+        openBtn = browser.find_element_by_class_name('rsBtNewBnr').find_element_by_tag_name('button')
+        openBtn.click() # 이력서 열람
+        time.sleep(3)
         cancleBtn = browser.find_element_by_xpath('//*[@id="dev_resume_open_layer"]/div[3]/p/button[2]')
         okBtn = browser.find_element_by_class_name('lyBottom').find_element_by_css_selector('#dev_resume_open_layer > div.lyBottom > p > button.on.confirmBtn.dev_btn_2')
-        # okBtn = browser.find_element_by_class_name('on confirmBtn dev_btn_2')
-        cancleBtn.click()
-        # okBtn.click()
+        # cancleBtn.click()
+        okBtn.click()
+        
         name = browser.find_element_by_class_name('name').get_attribute('innerText')
         gender = browser.find_element_by_class_name('gender').get_attribute('innerText')
         age = browser.find_element_by_class_name('age').get_attribute('innerText')
